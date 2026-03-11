@@ -1,0 +1,292 @@
+@import url("https://fonts.googleapis.com/css2?family=URW+Gothic:wght@300;400;500;700;900&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&display=swap');
+
+@font-face {
+  font-family: 'Riking';
+  src: url('/fonts/Riking.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'T1Korium';
+  src: url('/fonts/T1KoriumVF-BF65f3bd0000a2c.ttf') format('truetype');
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --background-rgb: 255, 255, 255;
+    --foreground: 0 0% 100%;         
+    --card-foreground: 40 25% 92%;
+    --popover-foreground: 40 25% 92%;
+    --secondary-foreground: 40 25% 92%;
+    --muted-foreground: 40 20% 80%;
+    --brand: 11 80% 57%;
+    --accent-orange: var(--brand);
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --muted: 240 5% 96%;
+    --primary: var(--brand);
+    --primary-foreground: 0 0% 100%;
+    --accent: 340 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: var(--brand);
+    --radius: 1rem;
+    --shadow-soft: 0 10px 40px -15px hsl(12 100% 56% / 0.2);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --gradient-start: 240 10% 98%;
+    --gradient-end: 250 60% 96%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --scroll-indicator: 38 33% 57%;
+    --body-text: 183 171 152;
+    --project-overlay: 240 10% 3%;
+    --hero-gold: 182 155 109;
+    --hero-orange: 235 89 57;
+  }
+
+  .dark {
+    --background: 240 10% 5%;
+    --background-rgb: 13, 13, 15;
+    --foreground: 0 0% 100%;        
+    --card-foreground: 40 25% 92%;
+    --popover-foreground: 40 25% 92%;
+    --secondary-foreground: 40 25% 92%;
+    --muted-foreground: 40 20% 80%;
+    --card: 240 10% 8%;
+    --popover: 240 10% 8%;
+    --secondary: 240 10% 15%;
+    --muted: 240 10% 15%;
+    --primary: var(--brand);
+    --primary-foreground: 0 0% 100%;
+    --accent: 340 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 18%;
+    --input: 240 10% 18%;
+    --ring: var(--brand);
+    --shadow-soft: 0 10px 40px -15px hsl(var(--brand) / 0.3);
+    --gradient-start: 240 10% 8%;
+    --gradient-end: 250 60% 12%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --scroll-indicator: 38 33% 57%;
+    --body-text: 183 171 152;
+    --project-overlay: 240 10% 3%;
+    --hero-gold: 182 155 109;
+    --hero-orange: 235 89 57;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 80px;
+    }
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+    overflow-x: clip;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100%;
+  }
+
+  img, video, canvas, svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  h1, h2, h3, p {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@layer utilities {
+  .hover-elevate {
+    @apply transition-all duration-300;
+  }
+  .hover-elevate:hover {
+    @apply -translate-y-1;
+  }
+  .active-elevate-2 {
+    @apply transition-all duration-150;
+  }
+  .active-elevate-2:active {
+    @apply scale-95;
+  }
+  .text-stroke {
+    -webkit-text-stroke: 1px hsl(var(--scroll-indicator) / 0.3);
+    -webkit-text-fill-color: transparent;
+  }
+  .text-stroke-hover {
+    -webkit-text-stroke: 1px hsl(var(--accent-orange) / 0.6);
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* ─── FONT CLASSI ─────────────────────────────────────── */
+
+.font-white {
+  font-family: 'Riking', sans-serif !important;
+  font-weight: 800;
+}
+
+.font-orange {
+  font-family: 'T1Korium', sans-serif !important;
+  font-weight: 700;
+  font-variation-settings: 'wght' 700;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+
+.font-button {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.font-role {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+}
+
+/* -----------------------------------------
+   CURSORE MINH PHAM
+----------------------------------------- */
+
+[data-cursor="big"] {
+  transition: color 0.25s ease-out, opacity 0.25s ease-out;
+}
+
+.cursor-minh {
+  background: #f7f7f7;
+  border-radius: 50%;
+  mix-blend-mode: difference;
+  position: fixed !important;
+  pointer-events: none !important;
+  z-index: 9999999 !important;
+}
+
+html, body, #root {
+  isolation: isolate;
+}
+
+/* -----------------------------------------
+   PROJECT SECTION ANIMATIONS
+----------------------------------------- */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes line-expand {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--scroll-indicator) / 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.line-expand {
+  transform-origin: left;
+  animation: line-expand 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.project-image-container {
+  overflow: hidden;
+}
+
+.project-image-container img {
+  transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.project-image-container:hover img {
+  transform: scale(1.08);
+}
+
+/* -----------------------------------------
+   VIEW TRANSITION — THEME TOGGLER
+   L'animazione circolare viene applicata via JS
+   su ::view-transition-new(root).
+   Qui resettiamo SOLO il default del browser
+   (che altrimenti fa cross-fade automatico).
+----------------------------------------- */
+
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+  /* clip-path parte da 0 — il JS lo espande al click */
+  clip-path: circle(0px at 0px 0px);
+}

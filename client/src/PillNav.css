@@ -1,0 +1,266 @@
+.pill-nav-container {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+}
+
+@media (max-width: 768px) {
+  .pill-nav-container {
+    width: calc(100% - 2rem);
+    left: 1rem;
+    transform: none;
+  }
+}
+
+.pill-nav {
+  --nav-h: 38px;
+  --logo-size: 90px;
+  --pill-pad-x: 14px;
+  --pill-gap: 2px;
+  width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .pill-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* ── Logo pill — grande e magnetico ── */
+.pill-logo {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  border: none;
+}
+
+.pill-logo:hover { opacity: 0.75; }
+
+.pill-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* ── Nav items wrapper — sfondo trasparente ── */
+.pill-nav-items {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--nav-h);
+  background: transparent;
+  border-radius: 9999px;
+  /* bordo sottile per dare forma senza sfondo pieno */
+  outline: 1px solid hsl(38 33% 57% / 0.25);
+}
+
+/* ── List ── */
+.pill-list {
+  list-style: none;
+  display: flex;
+  align-items: stretch;
+  gap: var(--pill-gap);
+  margin: 0;
+  padding: 3px;
+  height: 100%;
+}
+
+.pill-list > li {
+  display: flex;
+  height: 100%;
+}
+
+/* ── Single pill — default trasparente ── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 var(--pill-pad-x);
+  background: transparent;
+  border-radius: 9999px;
+  box-sizing: border-box;
+  font-family: "URW Gothic", sans-serif;
+  font-weight: 900;
+  font-size: 11px;
+  line-height: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  border: none;
+  outline: none;
+  transition: background-color 0.2s ease;
+}
+
+/* Il cerchio GSAP che rivela l'arancione dal basso */
+.pill .hover-circle {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  border-radius: 50%;
+  background: hsl(var(--accent-orange));   /* ← arancione */
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.pill .label-stack {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+  z-index: 2;
+}
+
+/* testo default → gold */
+.pill .pill-label {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  line-height: 1;
+  will-change: transform;
+  color: hsl(38 33% 57%);
+}
+
+/* testo sull'hover (revealed dal cerchio) → dark, leggibile sull'arancione */
+.pill .pill-label-hover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: hsl(240 10% 5%);
+  z-index: 3;
+  display: inline-block;
+  will-change: transform, opacity;
+  font-family: "URW Gothic", sans-serif;
+  font-weight: 900;
+}
+
+/* active: pill con sfondo arancione fisso */
+.pill.is-active {
+  background: hsl(var(--accent-orange));
+}
+
+.pill.is-active .pill-label {
+  color: hsl(240 10% 5%);
+}
+
+.pill.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: hsl(var(--accent-orange));
+  border-radius: 50%;
+  z-index: 4;
+}
+
+/* ── Responsive ── */
+.desktop-only { display: block; }
+.mobile-only  { display: none; }
+
+@media (max-width: 768px) {
+  .desktop-only { display: none; }
+  .mobile-only  { display: block; }
+}
+
+/* ── Hamburger ── */
+.mobile-menu-button {
+  width: var(--nav-h);
+  height: var(--nav-h);
+  border-radius: 50%;
+  background: hsl(240 10% 5% / 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid hsl(38 33% 57% / 0.2);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-button { display: flex; }
+}
+
+.hamburger-line {
+  width: 14px;
+  height: 1.5px;
+  background: hsl(38 33% 57%);
+  border-radius: 1px;
+  transform-origin: center;
+}
+
+/* ── Mobile popover ── */
+.mobile-menu-popover {
+  position: absolute;
+  top: calc(var(--nav-h) + 8px);
+  left: 0;
+  right: 0;
+  background: hsl(240 10% 5% / 0.85);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  z-index: 998;
+  opacity: 0;
+  transform-origin: top center;
+  visibility: hidden;
+  border: 1px solid hsl(38 33% 57% / 0.15);
+}
+
+.mobile-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobile-menu-popover .mobile-menu-link {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  color: hsl(38 33% 57%);
+  background-color: transparent;
+  font-family: "URW Gothic", sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.mobile-menu-popover .mobile-menu-link:hover,
+.mobile-menu-popover .mobile-menu-link.is-active {
+  background-color: hsl(var(--accent-orange));
+  color: hsl(240 10% 5%);
+}
