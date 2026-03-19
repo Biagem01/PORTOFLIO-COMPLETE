@@ -41,13 +41,12 @@
   height: 100%;
   width: 100%;
   position: relative;
-  /* FIX: rimosso pointer-events: none che bloccava i mouse events */
   text-transform: uppercase;
   text-decoration: none;
   white-space: nowrap;
-  font-weight: 800;
+  font-weight: 400;
   font-size: 5vh !important;
-  font-family: 'Riking', sans-serif !important;
+  font-family: 'Tanker', sans-serif !important;
 }
 
 .menu__item-link:hover {
@@ -89,11 +88,11 @@
 .marquee span {
   white-space: nowrap;
   text-transform: uppercase;
-  font-weight: 800;
+  font-weight: 400;
   font-size: 5vh !important;
   line-height: 0.9;
   padding: 0 1vw;
-  font-family: 'Futura Black', sans-serif !important;
+  font-family: 'SpriteGraffiti', sans-serif !important;
 }
 
 .marquee__img {

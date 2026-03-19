@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { useState, useLayoutEffect } from "react";
+import { useState, useLayoutEffect, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 
 import { queryClient } from "./lib/queryClient";
@@ -13,23 +13,51 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import CustomCursor from "@/components/CustomCursor";
 import LoadingScreen from "@/components/LoadingScreen";
 
+/* ✅ Lazy import delle pagine — ogni pagina diventa un chunk separato
+ * scaricato solo quando l'utente naviga su quella route.
+ *
+ * PRIMA: tutti e 4 i bundle scaricati al primo carico (anche se non servono)
+ * DOPO:  solo Index scaricato subito, AllProjects e ProjectPage on-demand
+ *
+ * Nota: Index NON è lazy perché è la home — viene sempre visitata per prima.
+ * NotFound è lazy perché raramente raggiunta.
+ */
 import Index from "./pages/Index";
-import AllProjects from "./pages/AllProjects";
-import ProjectPage from "./pages/ProjectPage";
-import NotFound from "./pages/NotFound";
+
+const AllProjects = lazy(() => import("./pages/AllProjects"));
+const ProjectPage = lazy(() => import("./pages/ProjectPage"));
+const NotFound    = lazy(() => import("./pages/NotFound"));
 
 if (typeof window !== "undefined") {
   window.history.scrollRestoration = "manual";
 }
 
+/* ─── Fallback minimalista durante il caricamento lazy ──────────────────── */
+/* Schermo nero puro — coerente col tema del sito, zero flash visivo */
+function PageFallback() {
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0,
+        backgroundColor: "#000000",
+        zIndex: 50,
+      }}
+    />
+  );
+}
+
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Index} />
-      <Route path="/projects" component={AllProjects} />
-      <Route path="/project/:id" component={ProjectPage} />
-      <Route component={NotFound} />
-    </Switch>
+    /* Suspense wrappa tutte le route lazy — mostra PageFallback
+     * mentre il chunk della pagina viene scaricato */
+    <Suspense fallback={<PageFallback />}>
+      <Switch>
+        <Route path="/" component={Index} />
+        <Route path="/projects" component={AllProjects} />
+        <Route path="/project/:id" component={ProjectPage} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

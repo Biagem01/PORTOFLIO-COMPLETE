@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link, useRoute, useLocation } from 'wouter';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useScroll, useTransform, AnimatePresence, useMotionValue, useSpring, useVelocity } from 'framer-motion';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowRight } from 'lucide-react';
@@ -17,7 +17,7 @@ const HERO_SCROLL = 1000;
 
 type BadgeRef = HTMLSpanElement & { __setProgress?: (progress: number) => void; };
 
-/* ─── Badge components (invariati) ──────────────────────────────────────────── */
+/* ─── Badge components ───────────────────────────────────────────────────── */
 function RevealBadge({ rotateTexts, interval, triggerRef, triggerProgress, fontSize }: {
   rotateTexts: string[]; interval: number; triggerRef: React.RefObject<BadgeRef>;
   triggerProgress: number; fontSize: string;
@@ -107,9 +107,6 @@ const SectionLabel = ({ label }: { label: string }) => (
   </div>
 );
 
-/* ─── StaticText: rimpiazza VariableText — zero spring, zero overhead ────────
-   Testo statico con stile identico. L'effetto hover era bello ma costava
-   ~700 spring attivi contemporaneamente per un about di 150 parole.          */
 const StaticText = ({ children, as: Tag = 'p', className }: {
   children: string; as?: 'p' | 'span' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'; className?: string;
 }) => <Tag className={className}>{children}</Tag>;
@@ -131,43 +128,210 @@ const ScrollingMarquee = ({ items, reverse = false }: { items: string[]; reverse
   );
 };
 
-/* ─── ProjectHoverGallery ────────────────────────────────────────────────── */
+/* ─── ProjectHoverGallery — with cursor lens magnifier ───────────────────── */
 const ProjectHoverGallery = ({ images }: { images: string[] }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const lensRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [lensVisible, setLensVisible] = useState(false);
+
+  // Lens position — updated via direct DOM for zero re-renders
+  const rafId = useRef<number | null>(null);
+  const lensX = useRef(0);
+  const lensY = useRef(0);
+
   const ITEM_W = 11; const ITEM_H = 20; const ACTIVE_W = 44; const HOVER_SCALE = 10;
-  const GAP = 0.8; const PERSPECTIVE = 55; const TRANSITION = 1.25; const GRAYSCALE = 1; const BRIGHTNESS = 0.45;
+  const GAP = 0.8; const PERSPECTIVE = 55; const TRANSITION = 1.25;
+  const LENS_SIZE = 140; // px
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (rafId.current) return;
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = null;
+      if (!lensRef.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      lensX.current = e.clientX - rect.left;
+      lensY.current = e.clientY - rect.top;
+      lensRef.current.style.left = `${lensX.current}px`;
+      lensRef.current.style.top  = `${lensY.current}px`;
+
+      // Also update the background-position of the lens to show magnified area
+      if (activeIndex !== null) {
+        const itemEls = containerRef.current.children;
+        const itemEl = itemEls[activeIndex] as HTMLElement;
+        if (!itemEl) return;
+        const itemRect = itemEl.getBoundingClientRect();
+        const mx = (e.clientX - itemRect.left) / itemRect.width;
+        const my = (e.clientY - itemRect.top) / itemRect.height;
+        const ZOOM = 2.2;
+        const bpx = mx * (100 * ZOOM - 100) * -1 + 50;
+        const bpy = my * (100 * ZOOM - 100) * -1 + 50;
+        lensRef.current.style.backgroundPosition = `${bpx}% ${bpy}%`;
+        lensRef.current.style.backgroundSize = `${ZOOM * 100}%`;
+        lensRef.current.style.backgroundImage = `url(${images[activeIndex]})`;
+      }
+    });
+  }, [activeIndex, images]);
+
   const getItemStyle = (index: number): React.CSSProperties => {
     const isActive = activeIndex === index; const isFocused = focusedIndex === index;
-    return { width: isActive ? `${ACTIVE_W}vw` : `calc(${ITEM_W}vw + 10px)`, height: `calc(${ITEM_H}vw + ${ITEM_H}vh)`, backgroundImage: `url(${images[index]})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', filter: isActive || isFocused ? 'brightness(1)' : `grayscale(${GRAYSCALE}) brightness(${BRIGHTNESS})`, transform: isActive ? `translateZ(calc(${HOVER_SCALE}vw + ${HOVER_SCALE}vh))` : 'none', transition: `transform ${TRANSITION}s cubic-bezier(.1,.7,0,1), filter 2.5s cubic-bezier(.1,.7,0,1), width ${TRANSITION}s cubic-bezier(.1,.7,0,1)`, willChange: 'transform, filter, width', zIndex: isActive ? 100 : 'auto', margin: isActive ? '0 0.4vw' : '0', outline: isFocused ? '2px solid rgb(235,89,57)' : 'none', outlineOffset: '2px', borderRadius: '0.75rem', boxShadow: isActive ? '0 0 60px rgba(235,89,57,0.2)' : 'none' };
+    return {
+      width: isActive ? `${ACTIVE_W}vw` : `calc(${ITEM_W}vw + 10px)`,
+      height: `calc(${ITEM_H}vw + ${ITEM_H}vh)`,
+      backgroundImage: `url(${images[index]})`,
+      backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'none',
+      filter: isActive || isFocused ? 'brightness(1)' : `grayscale(1) brightness(0.45)`,
+      transform: isActive ? `translateZ(calc(${HOVER_SCALE}vw + ${HOVER_SCALE}vh))` : 'none',
+      transition: `transform ${TRANSITION}s cubic-bezier(.1,.7,0,1), filter 2.5s cubic-bezier(.1,.7,0,1), width ${TRANSITION}s cubic-bezier(.1,.7,0,1)`,
+      willChange: 'transform, filter, width', zIndex: isActive ? 100 : 'auto',
+      margin: isActive ? '0 0.4vw' : '0',
+      outline: isFocused ? '2px solid rgb(235,89,57)' : 'none', outlineOffset: '2px',
+      borderRadius: '0.75rem',
+      boxShadow: isActive ? '0 0 60px rgba(235,89,57,0.2)' : 'none',
+    };
   };
+
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveIndex(activeIndex === index ? null : index); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); (containerRef.current?.children[index > 0 ? index - 1 : images.length - 1] as HTMLElement)?.focus(); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); (containerRef.current?.children[index < images.length - 1 ? index + 1 : 0] as HTMLElement)?.focus(); }
   };
+
   return (
-    <div className="flex items-center justify-center w-full overflow-hidden py-4" style={{ minHeight: '520px' }}>
-      <div ref={containerRef} className="flex justify-center items-center w-full" style={{ perspective: `calc(${PERSPECTIVE}vw + ${PERSPECTIVE}vh)`, gap: `${GAP}rem` }}>
+    <div
+      className="flex items-center justify-center w-full overflow-hidden py-4 relative"
+      style={{ minHeight: '520px', cursor: activeIndex !== null ? 'none' : 'default' }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setLensVisible(true)}
+      onMouseLeave={() => { setLensVisible(false); setActiveIndex(null); }}
+    >
+      {/* Cursor lens */}
+      <div
+        ref={lensRef}
+        aria-hidden
+        style={{
+          position: 'absolute',
+          width: LENS_SIZE, height: LENS_SIZE,
+          borderRadius: '50%',
+          border: '1.5px solid rgba(235,89,57,0.6)',
+          pointerEvents: 'none',
+          zIndex: 200,
+          transform: 'translate(-50%, -50%)',
+          opacity: lensVisible && activeIndex !== null ? 1 : 0,
+          transition: 'opacity 0.25s ease',
+          backgroundRepeat: 'no-repeat',
+          boxShadow: '0 0 0 1px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.1)',
+          backdropFilter: 'contrast(1.1)',
+          overflow: 'hidden',
+        }}
+      />
+
+      <div
+        ref={containerRef}
+        className="flex justify-center items-center w-full"
+        style={{ perspective: `calc(${PERSPECTIVE}vw + ${PERSPECTIVE}vh)`, gap: `${GAP}rem` }}
+      >
         {images.map((image, index) => (
-          <div key={index} className="relative will-change-transform" style={getItemStyle(index)} tabIndex={0} role="button" aria-label={`Image ${index + 1} of ${images.length}`} aria-pressed={activeIndex === index} onClick={() => setActiveIndex(activeIndex === index ? null : index)} onMouseEnter={() => setActiveIndex(index)} onMouseLeave={() => setActiveIndex(null)} onFocus={() => setFocusedIndex(index)} onBlur={() => setFocusedIndex(null)} onKeyDown={(e) => handleKeyDown(e, index)} />
+          <div
+            key={index}
+            className="relative will-change-transform"
+            style={getItemStyle(index)}
+            tabIndex={0}
+            role="button"
+            aria-label={`Image ${index + 1} of ${images.length}`}
+            aria-pressed={activeIndex === index}
+            onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+            onMouseEnter={() => setActiveIndex(index)}
+            onFocus={() => setFocusedIndex(index)}
+            onBlur={() => setFocusedIndex(null)}
+            onKeyDown={(e) => handleKeyDown(e, index)}
+          />
         ))}
       </div>
     </div>
   );
 };
 
-/* ─── FlipCard ───────────────────────────────────────────────────────────── */
+/* ─── FlipCard — with passive micro-movements (Perlin-ish float) ─────────── */
 const springCfg = { type: "spring", stiffness: 500, damping: 60, mass: 1 } as const;
-const FlipCard = ({ label, sub, topImage, bottomImage }: { label: string; sub: string; topImage: string; bottomImage: string }) => {
+
+function usePerlinFloat(speed = 1.0, amplitude = 1.0) {
+  // Simple pseudo-Perlin using multiple sine waves at different frequencies
+  const t = useRef(Math.random() * 100); // random phase offset per card
+  const [val, setVal] = useState({ x: 0, y: 0, rotate: 0 });
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const tick = () => {
+      t.current += 0.008 * speed;
+      const x = (Math.sin(t.current * 1.3) * 0.7 + Math.sin(t.current * 2.1) * 0.3) * amplitude * 2.5;
+      const y = (Math.sin(t.current * 0.9 + 1) * 0.6 + Math.sin(t.current * 1.7 + 2) * 0.4) * amplitude * 2.0;
+      const rotate = (Math.sin(t.current * 0.7 + 3) * 0.5 + Math.sin(t.current * 1.1 + 1.5) * 0.5) * amplitude * 0.8;
+      setVal({ x, y, rotate });
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [speed, amplitude]);
+
+  return val;
+}
+
+const FlipCard = ({ label, sub, topImage, bottomImage }: {
+  label: string; sub: string; topImage: string; bottomImage: string
+}) => {
   const [hovered, setHovered] = useState(false);
+  const float = usePerlinFloat(0.85, hovered ? 0 : 1); // stops floating on hover
+
+  // Magnetic tilt on hover
+  const tiltX = useMotionValue(0);
+  const tiltY = useMotionValue(0);
+  const springTiltX = useSpring(tiltX, { stiffness: 300, damping: 30 });
+  const springTiltY = useSpring(tiltY, { stiffness: 300, damping: 30 });
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    tiltX.set(((e.clientY - cy) / rect.height) * -12);
+    tiltY.set(((e.clientX - cx) / rect.width) * 12);
+  }, [tiltX, tiltY]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHovered(false);
+    tiltX.set(0);
+    tiltY.set(0);
+  }, [tiltX, tiltY]);
+
   return (
-    <motion.div onHoverStart={() => setHovered(true)} onHoverEnd={() => setHovered(false)} className="relative cursor-pointer" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+    <motion.div
+      ref={cardRef}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={handleMouseLeave}
+      onMouseMove={handleMouseMove}
+      className="relative cursor-pointer"
+      style={{
+        width: '100%', height: '100%', overflow: 'visible',
+        x: hovered ? 0 : float.x,
+        y: hovered ? 0 : float.y,
+        rotate: hovered ? 0 : float.rotate,
+        rotateX: springTiltX,
+        rotateY: springTiltY,
+        transformStyle: 'preserve-3d',
+        perspective: 800,
+      }}
+      transition={{ x: { duration: 0.8 }, y: { duration: 0.8 }, rotate: { duration: 0.8 } }}
+    >
       <div className="absolute inset-0 p-7 flex flex-col justify-between z-[1]">
         <div className="flex justify-between items-start">
           <span className="font-white uppercase text-sm tracking-widest text-white/90">{label}</span>
-          <div className="text-right"><span className="font-button text-[10px] uppercase tracking-[0.3em] text-white/30 block">Project</span><span className="font-button text-[10px] uppercase tracking-[0.3em] text-white/30 block">{sub}</span></div>
+          <div className="text-right">
+            <span className="font-button text-[10px] uppercase tracking-[0.3em] text-white/30 block">Project</span>
+            <span className="font-button text-[10px] uppercase tracking-[0.3em] text-white/30 block">{sub}</span>
+          </div>
         </div>
         <motion.div animate={{ opacity: hovered ? 0 : 1 }} transition={{ duration: 0.3 }} className="flex items-center gap-2">
           <span className="font-button text-[9px] uppercase tracking-[0.4em] text-primary/60">Hover to reveal</span>
@@ -188,6 +352,57 @@ const FlipCard = ({ label, sub, topImage, bottomImage }: { label: string; sub: s
     </motion.div>
   );
 };
+
+/* ─── ScrollControlledVideo — hero video with scroll-speed playback rate ─── */
+function ScrollControlledVideo({ src, className }: { src: string; className?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { scrollY } = useScroll();
+  const scrollVelocity = useVelocity(scrollY);
+  const rafRef = useRef<number | null>(null);
+  const targetRate = useRef(1.0);
+  const currentRate = useRef(1.0);
+
+  useEffect(() => {
+    const unsubVelocity = scrollVelocity.on("change", (v) => {
+      // Map scroll velocity to playback rate
+      // Slow scroll (v~0): rate 0.3 (slow motion while reading)
+      // Fast scroll (v~1000): rate 2.5 (fast forward during transition)
+      const absV = Math.abs(v);
+      if (absV < 20) {
+        targetRate.current = 0.3; // near-pause while reading
+      } else if (absV > 800) {
+        targetRate.current = 2.5; // fast during rapid scroll
+      } else {
+        targetRate.current = 0.3 + (absV / 800) * 2.2;
+      }
+    });
+
+    const tick = () => {
+      rafRef.current = requestAnimationFrame(tick);
+      if (!videoRef.current) return;
+      // Smooth interpolation toward target rate
+      currentRate.current += (targetRate.current - currentRate.current) * 0.08;
+      try {
+        videoRef.current.playbackRate = Math.max(0.1, Math.min(4, currentRate.current));
+      } catch { /* browser may reject rate changes */ }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      unsubVelocity();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [scrollVelocity]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay muted loop playsInline
+      className={className}
+      src={src}
+    />
+  );
+}
 
 /* ─── ProjectHeroTitle ───────────────────────────────────────────────────── */
 function ProjectHeroTitle({ title, scrollStyle }: { title: string; scrollStyle: string }) {
@@ -263,7 +478,9 @@ export const ProjectDetails = () => {
 };
 
 /* ─── ProjectDetailsInner ────────────────────────────────────────────────── */
-const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; project: (typeof PROJECTS)[number]; projectIndex: number; }) => {
+const ProjectDetailsInner = ({ id, project, projectIndex }: {
+  id: string; project: (typeof PROJECTS)[number]; projectIndex: number;
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const heroTransitionRef = useRef<HTMLDivElement>(null);
@@ -296,9 +513,7 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
         const aboutLabel = pinnedEl.querySelector('.about-label') as HTMLElement | null;
         if (aboutLabel) { aboutLabel.style.opacity = '0'; aboutLabel.style.transform = 'translateY(20px)'; }
         ScrollTrigger.create({
-          trigger: pinnedEl, start: "top 90%", end: "bottom 10%",
-          // ✅ scrub: true invece di 0.8 — nessuno spring implicito GSAP
-          scrub: true,
+          trigger: pinnedEl, start: "top 90%", end: "bottom 10%", scrub: true,
           onUpdate: (self) => {
             if (aboutLabel) {
               const le = 1 - Math.pow(1 - Math.min(1, self.progress / 0.12), 3);
@@ -341,7 +556,6 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
   const [nextHovered, setNextHovered] = useState(false);
   const nextProject = PROJECTS[(projectIndex + 1) % PROJECTS.length];
 
-  // Prepara i chunks per la sezione "about" animata
   const aboutWords = project.about.trim().split(/\s+/);
   const n = aboutWords.length;
   const findNaturalCut = (targetIdx: number, words: string[]): number => {
@@ -378,7 +592,8 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
           <motion.div style={{ opacity: videoOpacity }} className="absolute inset-0 z-0">
             <motion.div initial={{ scale: 1.3, borderRadius: "2rem" }} animate={{ scale: 1, borderRadius: "0rem" }} transition={{ duration: 1.7, ease: [0.16, 1, 0.3, 1], delay: 0.3 }} className="w-full h-full overflow-hidden">
               <motion.div initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }} className="w-full h-full">
-                <video autoPlay muted loop playsInline className="w-full h-full object-cover brightness-[0.45]" src={project.video} />
+                {/* ✅ ScrollControlledVideo — playback rate tied to scroll velocity */}
+                <ScrollControlledVideo src={project.video} className="w-full h-full object-cover brightness-[0.45]" />
               </motion.div>
             </motion.div>
             <motion.div style={{ opacity: overlayOpacity }} className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
@@ -455,7 +670,6 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
               <SectionLabel label="The Project" />
               <div className="editorial-item">
                 <span className="font-button text-[9px] uppercase tracking-[0.55em] text-white/20 block mb-6">Overview</span>
-                {/* ✅ StaticText invece di VariableText — rimossi ~700 spring */}
                 <StaticText className="font-button text-sm leading-relaxed text-white/40 max-w-sm">{project.about}</StaticText>
               </div>
             </div>
@@ -471,7 +685,6 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
             {[{ n: '( 1 )', label: 'Objective', text: project.challenge }, { n: '( 2 )', label: 'Approach', text: project.solution }].map(({ n, label, text }, i) => (
               <div key={i} className="editorial-item group grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 py-12 border-t border-white/[0.07] hover:border-primary/30 transition-colors duration-500">
                 <div className="lg:col-span-2 flex items-start gap-4"><span className="font-button text-xs text-primary/50 shrink-0 mt-1">{n}</span><span className="font-button text-[9px] uppercase tracking-[0.45em] text-white/20 mt-[3px]">{label}</span></div>
-                {/* ✅ StaticText invece di VariableText */}
                 <div className="lg:col-span-7 lg:col-start-4"><StaticText className="font-button text-sm leading-relaxed text-white/40 group-hover:text-white/55 transition-colors duration-500">{text}</StaticText></div>
                 <div className="lg:col-span-2 hidden lg:flex justify-end items-start pt-1"><div className="w-7 h-7 rounded-full border border-white/[0.08] flex items-center justify-center group-hover:border-primary/50 group-hover:bg-primary/10 transition-all duration-300"><ArrowRight size={10} className="text-white/20 group-hover:text-primary/70" /></div></div>
               </div>
@@ -504,6 +717,7 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
       {/* ─── Gallery ─── */}
       <section className="py-20 bg-black border-t border-white/[0.05]" data-cursor="hide">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-16"><SectionLabel label="Gallery" /></div>
+        {/* ✅ Gallery with cursor lens magnifier */}
         <ProjectHoverGallery images={project.extraMedia} />
       </section>
 
@@ -517,6 +731,7 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
             <AnimatedBadge rotateTexts={["HOVER ME", "FLIP IT", "EXPLORE", "DISCOVER"]} interval={2800} fontSize={labelBadgeSize} autoStart />
             <div className="divider-line flex-1 h-[1px] bg-white/10" />
           </div>
+          {/* ✅ FlipCards with Perlin float micro-movements */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
             <div className="flex flex-col gap-4" data-cursor="hide">
               <div style={{ height: 420 }}><FlipCard label={project.title} sub={project.year} topImage={project.extraMedia[0]} bottomImage={project.extraMedia[1]} /></div>
@@ -545,9 +760,22 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
         </div>
       </section>
 
-      {/* ─── Next Project ─── */}
+      {/* ─── Next Project — with background video teaser ──────────────────── */}
       <section className="relative overflow-hidden bg-black" data-cursor="hide">
-        <div className="w-full h-[2px] bg-primary" />
+        {/* ✅ Next project video playing silently in background */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <video
+            key={nextProject.id}
+            autoPlay muted loop playsInline
+            className="w-full h-full object-cover"
+            style={{ opacity: nextHovered ? 0.12 : 0.04, transition: 'opacity 1.2s cubic-bezier(0.16,1,0.3,1)' }}
+            src={nextProject.video}
+          />
+          {/* Gradient to keep text readable */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.85) 100%)' }} />
+        </div>
+
+        <div className="w-full h-[2px] bg-primary relative z-10" />
         <div className="relative z-10 px-6 lg:px-16 pt-20 pb-16">
           <div className="max-w-[1400px] mx-auto">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-4 mb-24">
@@ -588,7 +816,7 @@ const ProjectDetailsInner = ({ id, project, projectIndex }: { id: string; projec
           </div>
         </div>
         <div className="absolute right-0 bottom-0 font-white uppercase leading-none select-none pointer-events-none opacity-[0.04] translate-y-6 translate-x-4" style={{ fontSize: '28vw', color: 'rgb(235,89,57)' }}>{String(((projectIndex + 1) % PROJECTS.length) + 1).padStart(2, '0')}</div>
-        <div className="w-full h-[2px] bg-primary" />
+        <div className="w-full h-[2px] bg-primary relative z-10" />
       </section>
     </motion.div>
   );

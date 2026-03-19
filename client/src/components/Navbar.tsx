@@ -200,7 +200,7 @@ function PillNav({ items, activeHref }: { items: PillNavItem[]; activeHref?: str
               aria-label="Home"
               data-cursor="medium"
             >
-              <img ref={logoImgRef} src="/logo/favicon.png" alt="Logo" />
+              <img ref={logoImgRef} src="/logo/favicon.webp" alt="Logo" />
             </button>
           </MagneticWrapper>
         </NavAnimated>
